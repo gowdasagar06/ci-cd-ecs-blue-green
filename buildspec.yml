@@ -1,0 +1,42 @@
+version: 0.2
+run-as: root
+
+env:
+  variables:
+    AWS_ACCOUNT_ID: "528302462811"
+    AWS_DEFAULT_REGION: "ap-south-1"
+    IMAGE_REPO_NAME: "flask-repo"
+    CONTAINER_NAME: "flask"
+    IMAGE_TAG: "latest"
+    REPOSITORY_URI: "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com/${IMAGE_REPO_NAME}"
+
+phases:
+  pre_build:
+    commands:
+      - echo Logging in to Amazon ECR...
+      - aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin 528302462811.dkr.ecr.ap-south-1.amazonaws.com
+      - docker login -u gowdasagar -p Sagar@123
+      - export REPOSITORY_URI=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com/${IMAGE_REPO_NAME}
+      - COMMIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
+      - export IMAGE_TAG=build-$(echo $CODEBUILD_BUILD_ID | awk -F":" '{print $2}')
+      - echo Running unit tests...
+      # Add any additional pre-build commands here
+
+  build:
+    commands:
+      - echo Build started on `date`
+      - echo Building the Docker image...
+      - docker build -t $REPOSITORY_URI:latest .
+      - docker tag $REPOSITORY_URI:latest $REPOSITORY_URI:$IMAGE_TAG
+      # Add any additional build commands here
+
+  post_build:
+    commands:
+      - echo Build completed on `date`
+      - echo Pushing the Docker image...
+      - docker push $REPOSITORY_URI:latest
+      - docker push $REPOSITORY_URI:$IMAGE_TAG
+  
+
+artifacts:
+  files: appspec.yml
